@@ -1,0 +1,162 @@
+<{{ elements.effects }} class="effects-element">
+
+    {{!-- Searching --}}
+    <item-list-controls for="effects" label="{{ localize "DND5E.EffectsSearch" }}" sort="a"
+                        collection="effects"></item-list-controls>
+
+    {{!-- Effects List --}}
+    <section class="items-list effects-list" data-item-list="effects">
+
+        {{!-- Sections / Categories --}}
+        {{#each effects}}
+        <div class="items-section card" data-effect-type="{{ type }}">
+
+            {{!-- Section Header --}}
+            <div class="items-header header {{#if disabled}}disabled{{/if}}">
+                <h3 class="item-name effect-name">{{ localize label }}</h3>
+                <div class="item-header effect-source">{{ localize "DND5E.SOURCE.FIELDS.source.label" }}</div>
+                <div class="item-header item-controls effect-controls">
+                    {{#if info}}
+                    <a class="info-control" data-tooltip aria-label="{{ info }}">
+                        <i class="fas fa-circle-question" inert></i>
+                    </a>
+                    {{/if}}
+                </div>
+            </div>
+
+            {{!-- Section Contents --}}
+            <ol class="item-list unlist">
+                {{#each effects}}
+
+                {{!-- Effects --}}
+                <li class="item effect" data-effect-id="{{ id }}" data-entry-id="{{ id }}"
+                    data-item-name="{{ name }}" {{#if parentId}}data-parent-id="{{ parentId }}"{{/if}}>
+
+                    {{!-- Primary Effect --}}
+                    <div class="item-row draggable">
+                        {{> ".effect" }}
+                    </div>
+
+                    {{!-- Rider Effects --}}
+                    <div class="item-description collapsible-content">
+                        <div class="wrapper">
+
+                            <ol class="activities riders unlist">
+                                {{#each riders}}
+                                <li class="activity-row item-row" data-effect-id="{{ id }}" data-entry-id="{{ id }}"
+                                    {{#if parentId}}data-parent-id="{{ parentId }}"{{/if}}>
+                                    {{> ".effect" }}
+                                </li>
+                                {{/each}}
+                            </ol>
+
+                        </div>
+                    </div>
+
+                </li>
+
+                {{/each}}
+            </ol>
+
+        </div>
+        {{/each}}
+
+    </section>
+
+    {{#if hasConditions}}
+    <section class="items-list">
+
+        <div class="items-section card">
+
+            <div class="items-header header">
+                <h3 class="item-name">{{ localize "DND5E.Conditions" }}</h3>
+            </div>
+
+            <ul class="conditions-list unlist">
+                {{#each conditions}}
+                <li class="condition {{#unless disabled}}active{{/unless}} {{#if reference}}content-link{{/if}}"
+                    data-action="toggleCondition" data-uuid="{{ reference }}" data-condition-id="{{ id }}"
+                    data-tooltip="<section class=&quot;loading&quot;><i class=&quot;fas fa-spinner fa-spin-pulse&quot;></i></section>">
+                    <div class="icon">
+                        <dnd5e-icon src="{{ img }}"></dnd5e-icon>
+                    </div>
+                    <div class="name-stacked">
+                        <span class="title">{{ name }}</span>
+                    </div>
+                    <i class="fa-solid fa-toggle-{{ ifThen disabled "off" "on" }}"></i>
+                </li>
+                {{/each}}
+            </ul>
+
+        </div>
+
+    </section>
+    {{/if}}
+
+</{{ elements.effects }}>
+
+{{#*inline ".effect"}}
+
+{{!-- Effect Name --}}
+<div class="item-name item-tooltip effect-name">
+    <img class="item-image gold-icon" src="{{ img }}" alt="{{ name }}">
+    <div class="name name-stacked">
+        <span class="title">{{ name }}</span>
+    </div>
+    {{#if duration.remaining}}
+    <div class="duration">
+        <i class="fa-solid fa-clock" inert></i>
+        <span class="most-significant">{{ durationParts.[0] }}</span>
+        {{#if durationParts.[1]}}
+        <span class="separator">&vert;</span>
+        <span class="least-significant">{{ durationParts.[1] }}</span>
+        {{/if}}
+    </div>
+    {{/if}}
+</div>
+
+{{!-- Effect Source --}}
+<div class="item-detail effect-source {{#unless source}}empty{{/unless}}">
+    {{#if source}}
+    {{#if hasTooltip}}
+    <a class="item-tooltip" data-uuid="{{ source.uuid }}" data-tooltip-direction="RIGHT">{{ source.name }}</a>
+    {{else}}
+    {{ source.name }}
+    {{/if}}
+    {{/if}}
+</div>
+
+{{!-- Effect Status --}}
+<div class="item-detail item-controls effect-controls">
+
+    {{#if @root.editable}}
+    {{!-- Editing --}}
+    <a class="effect-control item-control" data-action="edit" data-tooltip
+       aria-label="{{ localize "DND5E.EffectEdit" }}">
+        <i class="fa-solid fa-pen-to-square"></i>
+    </a>
+
+    {{!-- Deleting --}}
+    <a class="effect-control item-control" data-action="delete" data-tooltip
+       aria-label="{{ localize "DND5E.EffectDelete" }}">
+        <i class="fa-solid fa-trash"></i>
+    </a>
+
+    {{else if toggleable}}
+    {{!-- Toggling --}}
+    <a class="effect-control item-control {{#unless disabled}}active{{/unless}}" data-action="toggle" data-tooltip
+       aria-label="{{ localize (ifThen disabled "DND5E.EffectEnabled" "DND5E.EffectDisable") }}">
+        <i class="fa-solid fa-toggle-{{ ifThen disabled "off" "on" }}"></i>
+    </a>
+
+    {{/if}}
+
+    {{!-- Context Menu --}}
+    <a class="effect-control item-control always-interactive" data-context-menu
+       aria-label="{{ localize "DND5E.AdditionalControls" }}">
+        <i class="fa-solid fa-ellipsis-vertical"></i>
+    </a>
+
+</div>
+
+{{/inline}}

@@ -1,0 +1,7 @@
+node_modules/
+.env
+bot/data/
+*.zip
+dnd5/
+Nuova cartella/
+Nuova cartella (1)/

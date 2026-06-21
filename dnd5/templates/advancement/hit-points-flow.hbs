@@ -1,0 +1,27 @@
+<form id="{{ appId }}" data-level="{{ level }}" data-id="{{ advancement.id }}" data-type="{{ type }}">
+    <h3>{{{ title }}}</h3>
+    {{#if hint}}<p>{{ hint }}</p>{{/if}}
+
+    {{#if isFirstClassLevel}}
+
+    <div>
+        {{{ localize "DND5E.ADVANCEMENT.HitPoints.MaxAtFirstLevel" max=dieValue }}}
+        <input type="hidden" name="useMax" value="true" data-dtype="Boolean">
+    </div>
+
+    {{else}}
+
+    <div class="rolls">
+        <label class="average-label flexrow">
+            <span>{{ localize "DND5E.ADVANCEMENT.HitPoints.TakeAverage" }}</span>
+            <dnd5e-checkbox class="average-checkbox" name="useAverage" {{ checked data.useAverage }}></dnd5e-checkbox>
+        </label>
+        <input class="roll-result" type="number" name="value" value="{{ data.value }}" {{ disabled data.useAverage }}>
+        <button class="roll-button dice-button" type="button" name="roll" {{ disabled data.useAverage }}
+                data-tooltip aria-label="{{ localize "DND5E.ADVANCEMENT.HitPoints.Action.Roll" die=hitDie }}">
+            <i class="fas fa-dice-{{ hitDie }}" inert></i>
+        </button>
+    </div>
+
+    {{/if}}
+</form>

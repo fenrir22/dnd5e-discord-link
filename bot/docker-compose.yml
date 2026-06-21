@@ -1,0 +1,14 @@
+services:
+  bot:
+    build: .
+    container_name: dnd5e-discord-bot
+    restart: unless-stopped
+    ports:
+      - "4758:4758"
+    env_file:
+      - .env
+    volumes:
+      - dnd5e-links:/app/data
+
+volumes:
+  dnd5e-links:

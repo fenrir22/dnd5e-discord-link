@@ -1,0 +1,64 @@
+<form class="dndlink-linking-form">
+  <h2>🔗 Collegamenti Discord - Personaggi</h2>
+
+  <div class="dndlink-bot-status">
+    <span class="status-dot {{#if botConnected}}connected{{else}}disconnected{{/if}}"></span>
+    <span>
+      {{#if botConnected}}
+        ✅ Connesso al bot Discord
+      {{else}}
+        ❌ Disconnesso dal bot Discord
+      {{/if}}
+    </span>
+    <span style="margin-left:auto;font-size:11px;color:#888">
+      Bot: <code>{{botUrl}}</code>
+    </span>
+  </div>
+
+  <hr>
+
+  <div class="dndlink-api-key-section">
+    <input type="text" id="dndlink-api-key" value="{{apiKey}}" readonly placeholder="Nessuna API Key">
+    <button type="button" id="dndlink-genkey-btn">🔄 Genera Nuova</button>
+  </div>
+
+  <hr>
+
+  <div class="dndlink-form-group">
+    <label>🆔 ID Utente Discord</label>
+    <input type="text" id="dndlink-discord-id" placeholder="Incolla l'ID utente (es. 123456789012345678)">
+  </div>
+
+  <div class="dndlink-form-group">
+    <label>🎭 Personaggio Foundry</label>
+    <select id="dndlink-actor-select">
+      <option value="">-- Seleziona --</option>
+      {{#each actors}}
+      <option value="{{this.id}}">
+        {{this.name}} ({{this.race}} {{this.class}} Lv.{{this.level}}{{#if this.player}} — {{this.player}}{{/if}})
+      </option>
+      {{/each}}
+    </select>
+  </div>
+
+  <div class="dndlink-button-row">
+    <button type="button" id="dndlink-link-btn" class="success">🔗 Collega</button>
+    <button type="button" id="dndlink-unlink-btn" class="danger">✂️ Scollega</button>
+  </div>
+
+  <div class="dndlink-links-list">
+    <h3>📋 Collegamenti attivi ({{links.length}})</h3>
+    {{#each links}}
+    <div class="dndlink-link-entry">
+      <span>
+        <span class="discord-id">{{this.discordId}}</span>
+        <span class="arrow">→</span>
+        <span class="char-name">{{this.actorName}}</span>
+      </span>
+      <button type="button" class="unlink-btn" data-discord-id="{{this.discordId}}">✂️</button>
+    </div>
+    {{else}}
+    <p class="empty-state">Nessun collegamento. Usa il form sopra per crearne uno.</p>
+    {{/each}}
+  </div>
+</form>
