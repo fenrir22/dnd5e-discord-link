@@ -110,10 +110,13 @@ Il bot salva i collegamenti su volume Docker (persistenti).
 | `/scheda` | Scheda completa (abilità, skill, HP, CA, classe, razza) |
 | `/status` | HP, CA, condizioni, ispirazione |
 | `/tiro tipo: skill nome:percezione [modalita: vantaggio] [bonus: +1d4]` | Tira skill/abilità/tiro salvezza (autocomplete) |
+| `/puro formula: 1d20+5 [modalita: vantaggio] [bonus: +1d4]` | Tiro libero con formula personalizzata |
 | `/azioni` | Elenca armi, incantesimi e talenti disponibili |
 | `/attacca arma: spada lunga [modalita: vantaggio] [bonus: +1d4]` | Tiro per colpire (incluso danno automatico) |
 | `/danno arma: spada lunga [critico: true] [bonus: +1d4]` | Tiro danno separato (con opzione critico e bonus) |
 | `/incantesimi` | Incantesimi preparati con slot |
+| `/switch personaggio: Nome` | Cambia personaggio attivo tra quelli collegati |
+| `/iniziativa` | Tira iniziativa per il tuo personaggio nel combat attivo |
 | `/ping` | Stato del bot e connessioni attive |
 | `/help` | Lista comandi |
 
@@ -208,6 +211,7 @@ La risoluzione usa:
 | `_createAndSendRoll` | Costruisce formula Roll con adv/svantaggio/bonus, valuta e invia in chat Foundry |
 | `_skillLabel(key)` | Restituisce il nome localizzato di una skill da `CONFIG.DND5E.skills` |
 | `_abilityLabel(key)` | Restituisce il nome localizzato di un'ability/save da `CONFIG.DND5E.abilities` |
+| `handleRollPuro` | Tiro libero: accetta formula custom (es. `3d8+2`), adv/svantaggio e bonus. Usato da `/puro` |
 
 Metodi rimossi dopo il refactoring:
 - `_rollWithAdvantage` — non più necessario: la formula viene costruita
@@ -239,6 +243,35 @@ npm run dev
 ```
 
 Il modulo Foundry si connette a `ws://localhost:4758` in sviluppo.
+
+## HP in tempo reale
+
+Quando il DM modifica i PF di un personaggio in Foundry (danno, cura, temp HP),
+il modulo invia un aggiornamento immediato via WebSocket al bot, che lo pubblica
+nel canale Discord configurato.
+
+```
+Esempio in Discord:
+  Selerio bruno
+  4 PF subito (21/27)
+```
+
+- L'aggiornamento è **istantaneo** (WebSocket, non polling)
+- Solo i personaggi **collegati a un utente Discord** generano notifiche
+- Il nome del personaggio viene dal modulo Foundry (non dal link)
+- Supporta danni, cure e temp HP
+
+### Storico
+
+Inizialmente il modulo usava un **polling ogni 15 secondi** dal bot verso
+Foundry per rilevare cambiamenti HP. Questo causava:
+
+- Notifiche duplicate (WebSocket + polling)
+- Ritardo di fino a 15 secondi
+- Traffico inutile
+
+Ora il polling è **rimosso**: l'unico canale è il WebSocket in tempo reale,
+attivato dall'hook `preUpdateActor` + `updateActor` di Foundry.
 
 ## Struttura repo
 
