@@ -143,6 +143,19 @@ const commands = [
   new SlashCommandBuilder()
     .setName('iniziativa')
     .setDescription("Tira iniziativa per il tuo personaggio"),
+
+  new SlashCommandBuilder()
+    .setName('puro')
+    .setDescription('Tiro libero con formula personalizzata')
+    .addStringOption(o => o.setName('formula').setDescription('Formula del dado (es: 1d20+5, 3d6+2)').setRequired(true))
+    .addStringOption(o => o.setName('descrizione').setDescription('Descrizione/etichetta del tiro'))
+    .addStringOption(o => o.setName('modalita').setDescription('Vantaggio o svantaggio')
+      .addChoices(
+        { name: 'Normale', value: 'normal' },
+        { name: 'Vantaggio', value: 'advantage' },
+        { name: 'Svantaggio', value: 'disadvantage' },
+      ))
+    .addStringOption(o => o.setName('bonus').setDescription('Bonus extra (es: 1d4, +2, 1d6+1)')),
 ];
 
 // ── WebSocket Server ───────────────────────────────────────────────────
@@ -864,6 +877,49 @@ const handlers = {
 
     embed.addFields({ name: '', value: 'Usa `/attacca` o `/danno` per usare le armi' });
     await interaction.editReply({ embeds: [embed] });
+  },
+
+  async puro(interaction) {
+    await interaction.deferReply();
+    const sess = getSessionForDiscord(interaction.user.id);
+    if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
+
+    const formula = interaction.options.getString('formula');
+    const descrizione = interaction.options.getString('descrizione');
+    const modalita = interaction.options.getString('modalita') || 'normal';
+    const bonus = interaction.options.getString('bonus');
+
+    const params = { formula };
+    if (modalita === 'advantage') params.advantage = true;
+    if (modalita === 'disadvantage') params.disadvantage = true;
+    if (bonus) params.bonus = bonus;
+    if (descrizione) params.descrizione = descrizione;
+
+    const result = await sendToFoundry(sess.link.gameId, {
+      type: 'execute',
+      action: 'roll_puro',
+      params,
+    }, interaction.user.id);
+
+    if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
+    if (!result?.success) return interaction.editReply(`[ERR] ${result?.error || 'Tiro fallito'}`);
+
+    const r = result.roll;
+    const modeText = modalita === 'advantage' ? ' (Vantaggio)' : modalita === 'disadvantage' ? ' (Svantaggio)' : '';
+    const bonusText = bonus ? ` + ${bonus}` : '';
+    const title = descrizione ? `Tiro: ${descrizione}${modeText}${bonusText}` : `Tiro Libero${modeText}${bonusText}`;
+
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor(0x9C27B0)
+        .setTitle(title)
+        .setDescription(`**Risultato: ${r.total}**`)
+        .addFields(
+          { name: 'Formula', value: `\`${r.formula}\``, inline: true },
+          { name: 'Tiri', value: r.termsDisplay || '—', inline: true },
+        )
+        .setTimestamp()],
+    });
   },
 
   async attacca(interaction) {

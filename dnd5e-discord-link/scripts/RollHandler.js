@@ -183,6 +183,31 @@ export class RollHandler {
     return this._formatRoll(roll, { type: 'damage', name: item.name });
   }
 
+  static async handleRollPuro(actor, params = {}) {
+    let formula = params.formula;
+    if (!formula) throw new Error('Nessuna formula specificata');
+
+    if (params.advantage) {
+      formula = formula.replace(/\b1d20\b/, '2d20kh');
+    } else if (params.disadvantage) {
+      formula = formula.replace(/\b1d20\b/, '2d20kl');
+    }
+
+    if (params.bonus) {
+      formula += ` + ${params.bonus}`;
+    }
+
+    const roll = new Roll(formula, actor.getRollData());
+    await roll.evaluate({ async: true });
+
+    await roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flavor: `Tiro: ${params.descrizione || formula}`
+    });
+
+    return this._formatRoll(roll, { type: 'puro', name: params.descrizione || formula });
+  }
+
   static _formatRoll(roll, meta = {}) {
     if (!roll) {
       return { error: 'Roll failed to execute', meta };

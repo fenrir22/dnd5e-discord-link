@@ -221,15 +221,15 @@ export class BotClient {
   async _executeAction(action, actor, params) {
     switch (action) {
       case 'roll_skill':
-        return RollHandler.handleRollSkill(actor, params.skillId);
+        return RollHandler.handleRollSkill(actor, params.skillId, params);
       case 'roll_ability':
-        return RollHandler.handleRollAbility(actor, params.abilityId);
+        return RollHandler.handleRollAbility(actor, params.abilityId, params);
       case 'roll_save':
-        return RollHandler.handleRollSave(actor, params.abilityId);
+        return RollHandler.handleRollSave(actor, params.abilityId, params);
       case 'roll_attack':
-        return RollHandler.handleRollAttack(actor, params.itemId);
+        return RollHandler.handleRollAttack(actor, params.itemId, params);
       case 'roll_damage':
-        return RollHandler.handleRollDamage(actor, params.itemId, params.critical);
+        return RollHandler.handleRollDamage(actor, params.itemId, params.critical, params);
       case 'get_sheet':
         return this._buildSheet(actor);
       case 'get_status':
@@ -244,6 +244,8 @@ export class BotClient {
         return this._getAvailableCharacters();
       case 'update_link':
         return this._updateLink(params.discordId, params.actorId, params.actorName);
+      case 'roll_puro':
+        return RollHandler.handleRollPuro(actor, params);
       case 'roll_initiative':
         return this._rollInitiative(params.discordId);
       default:
