@@ -1062,12 +1062,7 @@ const handlers = {
 
     if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
 
-    await interaction.editReply({ embeds: [new EmbedBuilder()
-      .setColor(0x9C27B0)
-      .setTitle('Iniziativa')
-      .setDescription(`**${result.name}**: ${result.initiative}`)
-      .setTimestamp()
-    ]});
+    await interaction.editReply({ content: `[OK] Iniziativa: **${result.initiative}**`, ephemeral: true });
   },
 };
 

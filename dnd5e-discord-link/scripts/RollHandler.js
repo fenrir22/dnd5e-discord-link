@@ -112,7 +112,7 @@ export class RollHandler {
       const baseRoll = baseResult?.[0];
       if (!baseRoll) throw new Error('Tiro per colpire fallito');
 
-      let formula = baseRoll.formula.replace(/^1d20\b/, options.advantage ? '2d20kh' : '2d20kl');
+      let formula = baseRoll.formula.replace(/^1d20\b/, options.advantage ? '2d20kh' : options.disadvantage ? '2d20kl' : '1d20');
       if (options.bonus) formula += ` + ${options.bonus}`;
 
       roll = new Roll(formula, actor.getRollData());
@@ -157,13 +157,14 @@ export class RollHandler {
       }
     };
 
-    if (item.system?.damage?.parts) {
+    const hasActivities = (item.system.activities || []).some(a => a.damage?.parts?.length);
+    if (!hasActivities && item.system?.damage?.parts) {
       for (const [f] of item.system.damage.parts) {
         parts.push(critical ? f.replace(/(\d+)(d)/g, (_, n, d) => `${parseInt(n) * 2}${d}`) : f);
       }
     }
-    if (item.system?.damage?.base) add(item.system.damage.base);
-    if (item.system?.damage?.versatile) add(item.system.damage.versatile);
+    if (!hasActivities && item.system?.damage?.base) add(item.system.damage.base);
+    if (!hasActivities && item.system?.damage?.versatile) add(item.system.damage.versatile);
     for (const act of (item.system.activities || [])) {
       for (const dp of (act.damage?.parts || [])) add(dp);
     }

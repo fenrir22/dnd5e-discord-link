@@ -78,6 +78,13 @@ export class BotClient {
       }
     });
 
+    Hooks.on('updateCombatant', (combatant, change) => {
+      if (change?.initiative !== undefined) {
+        const combat = combatant.combat;
+        if (combat) this._sendCombatUpdate(combat, 'combat_update');
+      }
+    });
+
     Hooks.on('deleteCombat', (combat) => {
       this._send({ type: 'combat_end', sceneName: combat.scene?.name || 'Sconosciuto' });
     });
