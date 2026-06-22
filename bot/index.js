@@ -148,7 +148,6 @@ const commands = [
     .setName('puro')
     .setDescription('Tiro libero con formula personalizzata')
     .addStringOption(o => o.setName('formula').setDescription('Formula del dado (es: 1d20+5, 3d6+2)').setRequired(true))
-    .addStringOption(o => o.setName('descrizione').setDescription('Descrizione/etichetta del tiro'))
     .addStringOption(o => o.setName('modalita').setDescription('Vantaggio o svantaggio')
       .addChoices(
         { name: 'Normale', value: 'normal' },
@@ -885,7 +884,6 @@ const handlers = {
     if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
 
     const formula = interaction.options.getString('formula');
-    const descrizione = interaction.options.getString('descrizione');
     const modalita = interaction.options.getString('modalita') || 'normal';
     const bonus = interaction.options.getString('bonus');
 
@@ -893,7 +891,6 @@ const handlers = {
     if (modalita === 'advantage') params.advantage = true;
     if (modalita === 'disadvantage') params.disadvantage = true;
     if (bonus) params.bonus = bonus;
-    if (descrizione) params.descrizione = descrizione;
 
     const result = await sendToFoundry(sess.link.gameId, {
       type: 'execute',
@@ -907,7 +904,7 @@ const handlers = {
     const r = result.roll;
     const modeText = modalita === 'advantage' ? ' (Vantaggio)' : modalita === 'disadvantage' ? ' (Svantaggio)' : '';
     const bonusText = bonus ? ` + ${bonus}` : '';
-    const title = descrizione ? `Tiro: ${descrizione}${modeText}${bonusText}` : `Tiro Libero${modeText}${bonusText}`;
+    const title = `Tiro Libero${modeText}${bonusText}`;
 
     await interaction.editReply({
       embeds: [new EmbedBuilder()

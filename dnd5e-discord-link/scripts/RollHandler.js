@@ -202,10 +202,10 @@ export class RollHandler {
 
     await roll.toMessage({
       speaker: ChatMessage.getSpeaker({ actor }),
-      flavor: `Tiro: ${params.descrizione || formula}`
+      flavor: `Tiro: ${formula}`
     });
 
-    return this._formatRoll(roll, { type: 'puro', name: params.descrizione || formula });
+    return this._formatRoll(roll, { type: 'puro', name: formula });
   }
 
   static _formatRoll(roll, meta = {}) {
