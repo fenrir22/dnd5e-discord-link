@@ -1,5 +1,13 @@
 # D&D5e Discord Link
 
+[![Foundry v13](https://img.shields.io/badge/Foundry-v13-green)](https://foundryvtt.com)
+[![D&D5e v4.x](https://img.shields.io/badge/D&D5e-v4.x-blue)](https://github.com/foundryvtt/dnd5e)
+
+**Manifest URL per Foundry:**
+```
+https://raw.githubusercontent.com/fenrir22/dnd5e-discord-link/master/dnd5e-discord-link/module.json
+```
+
 Modulo Foundry VTT v13 + Bot Discord per controllare il personaggio di D&D5e da Discord.
 Tiri per colpire, danni, abilità, tiri salvezza, scheda, status — tutto da Discord.
 
