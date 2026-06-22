@@ -25,6 +25,49 @@ export class BotClient {
   }
 
   _registerHooks() {
+    const _hpPreUpdate = new WeakMap();
+
+    Hooks.on('preUpdateActor', (actor, changes) => {
+      const ch = changes?.system?.attributes?.hp || changes?.['system.attributes.hp'];
+      const hpVal = ch?.value ?? changes?.['system.attributes.hp.value'];
+      if (hpVal === undefined) return;
+      _hpPreUpdate.set(actor, {
+        oldHp: actor.system?.attributes?.hp?.value ?? 0,
+        oldTemp: actor.system?.attributes?.hp?.temp ?? 0,
+      });
+    });
+
+    Hooks.on('updateActor', (actor, changes) => {
+      const ch = changes?.system?.attributes?.hp || changes?.['system.attributes.hp'];
+      const hpVal = ch?.value ?? changes?.['system.attributes.hp.value'];
+      if (hpVal === undefined) return;
+
+      const cached = _hpPreUpdate.get(actor);
+      if (!cached) return;
+      _hpPreUpdate.delete(actor);
+
+      const discordId = SettingsManager.getActiveDiscordUserForCharacter(actor.id);
+      if (!discordId) return;
+
+      const oldHp = cached.oldHp;
+      const maxHp = actor.system?.attributes?.hp?.max ?? 0;
+      const oldTemp = cached.oldTemp;
+      const newTemp = ch?.temp ?? changes?.['system.attributes.hp.temp'] ?? oldTemp;
+      const diff = hpVal - oldHp;
+      if (diff === 0) return;
+
+      const sent = this._send({
+        type: 'hp_update',
+        discordId,
+        actorId: actor.id,
+        actorName: actor.name,
+        oldHp, newHp: hpVal, maxHp,
+        oldTemp, newTemp,
+        diff,
+      });
+      console.log(`D&D5e Discord Link | HP ${actor.name}: ${diff > 0 ? '+' : ''}${diff} (${hpVal}/${maxHp})${sent ? ' → inviato' : ' → accodato'}`);
+    });
+
     Hooks.on('combatStart', (combat) => {
       this._sendCombatUpdate(combat, 'combat_start');
     });
@@ -37,29 +80,6 @@ export class BotClient {
 
     Hooks.on('deleteCombat', (combat) => {
       this._send({ type: 'combat_end', sceneName: combat.scene?.name || 'Sconosciuto' });
-    });
-
-    Hooks.on('updateActor', (actor, changes) => {
-      const ch = changes?.system?.attributes?.hp || changes?.['system.attributes.hp'];
-      let hpVal = ch?.value ?? changes?.['system.attributes.hp.value'];
-      if (hpVal === undefined) return;
-
-      const hp = actor.system?.attributes?.hp ?? {};
-      const oldHp = hp.value ?? 0;
-      const maxHp = hp.max ?? 0;
-      const oldTemp = hp.temp ?? 0;
-      const newTemp = ch?.temp ?? changes?.['system.attributes.hp.temp'] ?? oldTemp;
-      const diff = hpVal - oldHp;
-      if (diff === 0) return;
-
-      const sent = this._send({
-        type: 'hp_update',
-        actorName: actor.name,
-        oldHp, newHp: hpVal, maxHp,
-        oldTemp, newTemp,
-        diff,
-      });
-      console.log(`D&D5e Discord Link | HP ${actor.name}: ${diff > 0 ? '+' : ''}${diff} (${hpVal}/${maxHp})${sent ? ' → inviato' : ' → accodato'}`);
     });
   }
 

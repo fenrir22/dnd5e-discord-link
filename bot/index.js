@@ -283,10 +283,14 @@ function handleFoundryMessage(ws, msg) {
         try { channel = await client.channels.fetch(sess.channelId); } catch {}
         if (!channel) return;
 
-        const { actorName, oldHp, newHp, maxHp, oldTemp, newTemp, diff } = msg;
+        const { discordId, actorName, newHp, maxHp, newTemp, diff } = msg;
         const label = diff > 0 ? 'recuperato' : 'subito';
         const color = diff > 0 ? 0x4CAF50 : 0xF44336;
         const absDiff = Math.abs(diff);
+
+        if (discordId) {
+          hpCache.set(discordId, { value: newHp, temp: newTemp || 0 });
+        }
 
         const embed = new EmbedBuilder()
           .setColor(color)
@@ -379,47 +383,8 @@ function handleFoundryMessage(ws, msg) {
   }
 }
 
-// ── HP polling ─────────────────────────────────────────────────────────
-const hpCache = new Map(); // discordId -> { value, temp }
-
-function startHpPolling() {
-  setInterval(async () => {
-    for (const [discordId, link] of links) {
-      if (!link.activeActorId) continue;
-      const sess = sessions.get(link.gameId);
-      if (!sess?.channelId) continue;
-
-      try {
-        const result = await sendToFoundry(link.gameId, {
-          type: 'request', action: 'get_status', params: {},
-        }, discordId, 10000);
-
-        if (result?.error) continue;
-        const hp = result?.hp;
-        if (!hp) continue;
-
-        const cached = hpCache.get(discordId);
-        if (cached && (cached.value !== hp.value || cached.temp !== (hp.temp || 0))) {
-          const diff = hp.value - cached.value;
-          if (diff !== 0) {
-            const channel = await client.channels.fetch(sess.channelId).catch(() => null);
-            if (channel) {
-              const label = diff > 0 ? 'recuperato' : 'subito';
-              const absDiff = Math.abs(diff);
-              const embed = new EmbedBuilder()
-                .setColor(diff > 0 ? 0x4CAF50 : 0xF44336)
-                .setTitle(link.activeActorName || link.characters[0]?.actorName || 'Sconosciuto')
-                .setDescription(`**${absDiff}** PF ${label} (${hp.value}/${hp.max}${hp.temp ? ` +${hp.temp} temp` : ''})`)
-                .setTimestamp();
-              channel.send({ embeds: [embed] }).catch(() => {});
-            }
-          }
-        }
-        hpCache.set(discordId, { value: hp.value, temp: hp.temp || 0 });
-      } catch {}
-    }
-  }, 15000);
-}
+// ── HP polling (disabilitato — ora usiamo WebSocket in tempo reale) ────
+const hpCache = new Map(); // ancora usato da hp_update per evitare log spuri
 
 // ── Gestione richieste pending ─────────────────────────────────────────
 const pendingRequests = new Map();
@@ -474,8 +439,6 @@ client.once('ready', async () => {
     console.error('[Discord] Errore registrazione comandi:', err.message);
   }
 
-  startHpPolling();
-  console.log('[HP] Polling avviato (ogni 15s)');
 });
 
 // ── Autocomplete ───────────────────────────────────────────────────────
