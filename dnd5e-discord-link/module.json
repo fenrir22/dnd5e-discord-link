@@ -9,8 +9,8 @@
   },
   "authors": [
     {
-      "name": "YourName",
-      "url": ""
+      "name": "fenrir22",
+      "url": "https://github.com/fenrir22"
     }
   ],
   "esmodules": [
@@ -33,7 +33,7 @@
     ]
   },
 
-  "url": "",
-  "manifest": "",
-  "download": ""
+  "url": "https://github.com/fenrir22/dnd5e-discord-link",
+  "manifest": "https://raw.githubusercontent.com/fenrir22/dnd5e-discord-link/master/dnd5e-discord-link/module.json",
+  "download": "https://github.com/fenrir22/dnd5e-discord-link/archive/master.zip"
 }
