@@ -980,10 +980,28 @@ const handlers = {
     }, interaction.user.id);
 
     if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
-    if (!result?.success) return interaction.editReply(`[ERR] ${result?.error || 'Attacco fallito'}`);
+    if (!result?.success && result.type !== 'save') return interaction.editReply(`[ERR] ${result?.error || 'Attacco fallito'}`);
 
     const modeText = modalita === 'advantage' ? ' (Vantaggio)' : modalita === 'disadvantage' ? ' (Svantaggio)' : '';
     const bonusText = bonus ? ` + ${bonus}` : '';
+
+    if (result.type === 'save') {
+      const embed = new EmbedBuilder()
+        .setColor(0x9C27B0)
+        .setTitle(`${weapon.name} (Tiro Salvezza)`)
+        .setDescription(`**CD: ${result.saveDC}** (${result.saveAbility})`)
+        .setFooter({ text: 'Il bersaglio deve superare il tiro salvezza' });
+
+      if (result.damageRoll) {
+        embed.addFields(
+          { name: 'Danno', value: `**${result.damageRoll.total}**`, inline: true },
+          { name: 'Formula', value: `\`${result.damageRoll.formula}\``, inline: true },
+        );
+      }
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0xF44336)

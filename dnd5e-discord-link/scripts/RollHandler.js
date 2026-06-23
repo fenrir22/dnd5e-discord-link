@@ -106,7 +106,20 @@ export class RollHandler {
     const activity = item.system.activities?.find(a => a.type === 'attack');
     if (!activity) {
       const saveAct = item.system.activities?.find(a => a.type === 'save');
-      if (saveAct) throw new Error('Questo incantesimo richiede un tiro salvezza sul bersaglio, non un tiro per colpire. Usa /tiro save');
+      if (saveAct) {
+        const saveDC = actor.system?.attributes?.spelldc || 8 + (actor.system?.abilities?.[saveAct.ability]?.mod || 0) + (actor.system?.attributes?.prof || 2);
+        const saveAbilityKey = saveAct.ability || (saveAct.damage?.parts?.[0]?.types?.[0] ? Object.keys(CONFIG.DND5E.abilities || {}).find(k => CONFIG.DND5E.abilities[k]?.label?.toLowerCase().includes(saveAct.damage.parts[0].types[0])) : '') || '';
+        const saveLabel = CONFIG.DND5E?.abilities?.[saveAbilityKey]?.label || saveAbilityKey.toUpperCase() || '—';
+        let damageResult;
+        try { damageResult = await this.handleRollDamage(actor, itemId, false); } catch {}
+        return {
+          type: 'save',
+          name: item.name,
+          saveDC,
+          saveAbility: saveLabel,
+          damageRoll: damageResult?.roll || null,
+        };
+      }
       throw new Error('Questo oggetto non supporta tiri per colpire');
     }
 
