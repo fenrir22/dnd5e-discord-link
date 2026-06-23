@@ -115,6 +115,9 @@ export class RollHandler {
           flavor: `${item.name} — Tiro Salvezza CD ${saveDC} ${saveLabel}`,
           content: `<p><strong>CD ${saveDC}</strong> — ${saveLabel}<br>Il bersaglio deve superare il tiro salvezza per subire metà danno.</p>`,
         });
+        try {
+          await saveAct.use({}, { configure: false });
+        } catch {}
         let damageResult;
         try {
           const dmgResult = await saveAct.rollDamage({}, { configure: false }, { create: true });
