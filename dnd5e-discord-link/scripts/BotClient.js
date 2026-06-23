@@ -533,6 +533,8 @@ export class BotClient {
       ['weapon', 'spell', 'feat', 'equipment'].includes(i.type)
     );
 
+    const hasAttackActivity = (item) =>
+      item.system?.activities?.some(a => a.type === 'attack') || !!(item.system?.actionType && item.system.actionType !== 'save' && item.system.actionType !== 'utility');
     return {
       actions: items.map(item => ({
         id: item.id,
@@ -544,6 +546,7 @@ export class BotClient {
         usesMax: item.system?.uses?.max || null,
         level: item.system?.level || null,
         prepared: item.system?.prepared ?? true,
+        hasAttack: hasAttackActivity(item),
       })),
       spellSlots: actor.system?.spells || null,
     };

@@ -104,7 +104,11 @@ export class RollHandler {
 
     let roll;
     const activity = item.system.activities?.find(a => a.type === 'attack');
-    if (!activity) throw new Error('Questo oggetto non supporta tiri per colpire');
+    if (!activity) {
+      const saveAct = item.system.activities?.find(a => a.type === 'save');
+      if (saveAct) throw new Error('Questo incantesimo richiede un tiro salvezza sul bersaglio, non un tiro per colpire. Usa /tiro save');
+      throw new Error('Questo oggetto non supporta tiri per colpire');
+    }
 
     const hasOptions = options.advantage || options.disadvantage || options.bonus;
     if (hasOptions) {

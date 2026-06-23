@@ -526,8 +526,30 @@ client.on('interactionCreate', async (interaction) => {
       return interaction.respond(filtered);
     }
 
-    if (cmd === 'attacca' || cmd === 'danno') {
+    if (cmd === 'attacca') {
       if (focusedName !== 'arma') return interaction.respond([]);
+      const result = await sendToFoundry(sess.link.gameId, {
+        type: 'request', action: 'list_actions', params: {},
+      }, interaction.user.id);
+      const items = (result?.actions || []).filter(a => a.hasAttack && (a.type === 'weapon' || a.type === 'spell'));
+      const filtered = items
+        .filter(i => i.name.toLowerCase().includes(focused))
+        .slice(0, 25)
+        .map(i => ({ name: i.name, value: i.name }));
+      return interaction.respond(filtered);
+    }
+
+    if (cmd === 'danno') {
+      if (focusedName !== 'arma') return interaction.respond([]);
+      const result = await sendToFoundry(sess.link.gameId, {
+        type: 'request', action: 'list_actions', params: {},
+      }, interaction.user.id);
+      const items = (result?.actions || []).filter(a => a.damage?.length && (a.type === 'weapon' || a.type === 'spell'));
+      const filtered = items
+        .filter(i => i.name.toLowerCase().includes(focused))
+        .slice(0, 25)
+        .map(i => ({ name: i.name, value: i.name }));
+      return interaction.respond(filtered);
     }
 
     const result = await sendToFoundry(sess.link.gameId, {
