@@ -110,11 +110,7 @@ export class RollHandler {
         const saveDC = actor.system?.attributes?.spelldc || 8 + (actor.system?.abilities?.[saveAct.ability]?.mod || 0) + (actor.system?.attributes?.prof || 2);
         const saveAbilityKey = saveAct.ability || (saveAct.damage?.parts?.[0]?.types?.[0] ? Object.keys(CONFIG.DND5E.abilities || {}).find(k => CONFIG.DND5E.abilities[k]?.label?.toLowerCase().includes(saveAct.damage.parts[0].types[0])) : '') || '';
         const saveLabel = CONFIG.DND5E?.abilities?.[saveAbilityKey]?.label || saveAbilityKey.toUpperCase() || '—';
-        await ChatMessage.create({
-          speaker: ChatMessage.getSpeaker({ actor }),
-          flavor: `${item.name} — Tiro Salvezza CD ${saveDC} ${saveLabel}`,
-          content: `<p><strong>CD ${saveDC}</strong> — ${saveLabel}<br>Il bersaglio deve superare il tiro salvezza per subire metà danno.</p>`,
-        });
+        // CD visibile su Discord, Foundry mostra già la scheda ufficiale da use()
         try {
           await saveAct.use({}, { configure: false });
         } catch {}
