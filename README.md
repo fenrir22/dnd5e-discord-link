@@ -26,7 +26,7 @@ Multi-istanza: più partite Foundry possono connettersi allo stesso bot.
 
 ## Prerequisiti
 
-- Foundry VTT **v13** con sistema **D&D5e v3.x**
+- Foundry VTT **v13** con sistema **D&D5e v4.x (2024)**
 - Server con **Docker** e **docker compose**
 - Cloudflare Tunnel (cloudflared) per esporre il bot
 - Un'applicazione Discord con token
@@ -120,15 +120,25 @@ Il bot salva i collegamenti su volume Docker (persistenti).
 | `/tiro tipo: skill nome:percezione [modalita: vantaggio] [bonus: +1d4]` | Tira skill/abilità/tiro salvezza (autocomplete) |
 | `/puro formula: 1d20+5 [modalita: vantaggio] [bonus: +1d4]` | Tiro libero con formula personalizzata |
 | `/azioni` | Elenca armi, incantesimi e talenti disponibili |
-| `/attacca arma: spada lunga [modalita: vantaggio] [bonus: +1d4]` | Tiro per colpire (incluso danno automatico) |
+| `/attacca arma: spada lunga [modalita: vantaggio] [bonus: +1d4]` | Tiro per colpire o tiro salvezza (include danno automatico) |
 | `/danno arma: spada lunga [critico: true] [bonus: +1d4]` | Tiro danno separato (con opzione critico e bonus) |
 | `/incantesimi` | Incantesimi preparati con slot |
+| `/cerca-incantesimo nome: Muro di Fuoco` | Cerca incantesimo tra tutti quelli del pg (autocomplete). Mostra livello, scuola, componenti, danno, slot, CD, descrizione |
+| `/inventario` | Mostra equipaggiamento, monete e oggetti nello zaino |
+| `/riposo-breve [hd: 2]` | Riposo breve: tira dadi vita e cura PF |
+| `/riposo-lungo` | Riposo lungo: cura completa, recupera dadi vita e slot incantesimi |
+| `/ts-morte` | Tiro salvezza per non morire (con conteggio successi/fallimenti) |
+| `/concentrazione danno: 15` | Tiro Costituzione per mantenere la concentrazione |
 | `/switch personaggio: Nome` | Cambia personaggio attivo tra quelli collegati |
 | `/iniziativa` | Tira iniziativa per il tuo personaggio nel combat attivo |
 | `/ping` | Stato del bot e connessioni attive |
 | `/help` | Lista comandi |
 
 I tiri appaiono sia su Discord che nella chat di Foundry.
+
+`/attacca` supporta sia armi con tiro per colpire sia incantesimi a tiro salvezza:
+- **Tiro per colpire**: mostra risultato + danno automatico
+- **Tiro salvezza**: mostra CD + abilità + danno (il bersaglio tira il salvezza manualmente)
 
 ## Vantaggio / Svantaggio / Bonus
 
@@ -310,6 +320,6 @@ dnd5e-discord-link/        # Modulo Foundry VTT
 ## Compatibilità
 
 - **Foundry VTT**: v13
-- **Sistema D&D5e**: v3.x (5.2.x PHB 2024)
+- **Sistema D&D5e**: v3.x / v4.x (2024)
 - **API Discord.js**: v14
 - **Node.js**: 18+
