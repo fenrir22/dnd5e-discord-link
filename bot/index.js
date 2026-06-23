@@ -167,6 +167,11 @@ const commands = [
     .setDescription('Mostra l\'inventario del personaggio'),
 
   new SlashCommandBuilder()
+    .setName('cerca-incantesimo')
+    .setDescription('Cerca un incantesimo tra quelli del personaggio')
+    .addStringOption(o => o.setName('nome').setDescription('Nome dell\'incantesimo').setRequired(true).setAutocomplete(true)),
+
+  new SlashCommandBuilder()
     .setName('puro')
     .setDescription('Tiro libero con formula personalizzata')
     .addStringOption(o => o.setName('formula').setDescription('Formula del dado (es: 1d20+5, 3d6+2)').setRequired(true))
@@ -505,6 +510,19 @@ client.on('interactionCreate', async (interaction) => {
         value: c.actorName,
       }));
       const filtered = choices.filter(c => c.name.toLowerCase().includes(focused) || c.value.toLowerCase().includes(focused)).slice(0, 25);
+      return interaction.respond(filtered);
+    }
+
+    if (cmd === 'cerca-incantesimo') {
+      if (focusedName !== 'nome') return interaction.respond([]);
+      const result = await sendToFoundry(sess.link.gameId, {
+        type: 'request', action: 'list_actions', params: {},
+      }, interaction.user.id);
+      const spells = (result?.actions || []).filter(a => a.type === 'spell');
+      const filtered = spells
+        .filter(s => s.name.toLowerCase().includes(focused))
+        .slice(0, 25)
+        .map(s => ({ name: `${s.name} (Lv.${s.level ?? 0})`, value: s.name }));
       return interaction.respond(filtered);
     }
 
@@ -1179,6 +1197,46 @@ const handlers = {
         )
         .setTimestamp()],
     });
+  },
+
+  async 'cerca-incantesimo'(interaction) {
+    await interaction.deferReply();
+    const sess = getSessionForDiscord(interaction.user.id);
+    if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
+
+    const nome = interaction.options.getString('nome');
+    const result = await sendToFoundry(sess.link.gameId, {
+      type: 'request', action: 'search_spell', params: { name: nome },
+    }, interaction.user.id, 30000);
+
+    if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
+    if (!result) return interaction.editReply('[ERR] Incantesimo non trovato.');
+
+    const s = result;
+    const color = s.prepared ? 0x2196F3 : 0x9E9E9E;
+    const prepLabel = s.prepared ? 'Preparato' : 'Non preparato';
+
+    const embed = new EmbedBuilder()
+      .setColor(color)
+      .setTitle(`${s.name} — ${s.levelLabel}`)
+      .setDescription(s.school)
+      .addFields(
+        { name: 'Tempo di Lancio', value: s.activation, inline: true },
+        { name: 'Gittata', value: s.range, inline: true },
+        { name: 'Bersaglio/Area', value: s.target, inline: true },
+        { name: 'Durata', value: s.duration, inline: true },
+        { name: 'Componenti', value: s.components, inline: true },
+        { name: 'Danno', value: s.damage, inline: true },
+        { name: 'Slot', value: s.slots, inline: true },
+        { name: 'Stato', value: prepLabel, inline: true },
+      );
+
+    if (s.description) {
+      const desc = s.description.length > 500 ? s.description.slice(0, 500) + '…' : s.description;
+      embed.addFields({ name: 'Descrizione', value: desc });
+    }
+
+    await interaction.editReply({ embeds: [embed] });
   },
 
   async inventario(interaction) {

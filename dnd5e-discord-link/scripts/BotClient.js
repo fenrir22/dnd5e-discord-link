@@ -288,6 +288,8 @@ export class BotClient {
         return RollHandler.handleRollConcentration(actor, params);
       case 'get_inventory':
         return this._buildInventory(actor);
+      case 'search_spell':
+        return this._searchSpell(actor, params.name);
       default:
         throw new Error(`Azione sconosciuta: ${action}`);
     }
@@ -357,9 +359,11 @@ export class BotClient {
       const f = this._formatDamageData(base);
       if (f) return [f];
     }
-    const activity = item.system?.activities?.find(a => a.type === 'attack' || a.type === 'damage');
-    if (activity?.damage?.parts?.length) {
-      return activity.damage.parts.map(d => this._formatDamageData(d)).filter(Boolean);
+    for (const act of (item.system?.activities || [])) {
+      if (act.damage?.parts?.length) {
+        const formulas = act.damage.parts.map(d => this._formatDamageData(d)).filter(Boolean);
+        if (formulas.length) return formulas;
+      }
     }
     return [];
   }
@@ -542,6 +546,109 @@ export class BotClient {
         prepared: item.system?.prepared ?? true,
       })),
       spellSlots: actor.system?.spells || null,
+    };
+  }
+
+  _searchSpell(actor, name) {
+    const spells = actor.items.filter(i => i.type === 'spell');
+    const match = spells.find(s => s.name.toLowerCase().includes(name.toLowerCase()));
+    if (!match) return null;
+
+    const school = match.system?.school?.label
+      || CONFIG.DND5E?.spellSchools?.[match.system?.school]?.label
+      || match.system?.school || '—';
+
+    const level = match.system?.level ?? 0;
+    const levelLabel = level === 0 ? 'Trucchetto' : `Livello ${level}`;
+
+    const props = new Set([...(match.system?.properties || [])].map(p => p.toLowerCase()));
+    const compMat = match.system?.materials?.value || match.system?.materials?.name || '';
+    const hasV = props.has('vocal') || props.has('verbal');
+    const hasS = props.has('somatic');
+    const hasM = props.has('material') || !!compMat;
+    let components = [
+      hasV ? 'V' : '',
+      hasS ? 'S' : '',
+      hasM ? `M${compMat ? ` (${compMat})` : ''}` : '',
+    ].filter(Boolean).join(', ');
+    if (!components) {
+      const descText = match.system?.description?.value || '';
+      const m = descText.match(/Component(?:i|s)[:\s]+([^<]+?)(?:<|$)/i);
+      if (m) components = m[1].trim().replace(/\s+/g, ' ').replace(/ *\( */g, ' (').replace(/ *\) */g, ')');
+    }
+    if (!components) components = '—';
+
+    const activation = match.system?.activation || {};
+    const activationTime = activation.type
+      ? `${activation.cost || 1} ${activation.type}`
+      : '—';
+
+    const target = match.system?.target || {};
+    const targetStr = target.value
+      ? `${target.value}${target.units ? ` ${target.units}` : ''}${target.type ? ` (${target.type})` : ''}`
+      : '—';
+
+    const durationParts = match.system?.duration || {};
+    const durationStr = durationParts.value
+      ? `${durationParts.value} ${durationParts.units || ''}${durationParts.concentration ? ' (Concentrazione)' : ''}`
+      : durationParts.concentration ? 'Concentrazione' : '—';
+
+    const range = match.system?.range || {};
+    const rangeStr = range.value
+      ? `${range.value}${range.units ? ` ${range.units}` : ''}`
+      : range.long ? `${range.value}/${range.long} ${range.units || ''}` : '—';
+
+    const damage = this._getDamageFormulas(match);
+    let damageType = '—';
+    if (match.system?.damage?.parts?.[0]?.[1]) {
+      damageType = CONFIG.DND5E?.damageTypes?.[match.system.damage.parts[0][1]]?.label || match.system.damage.parts[0][1];
+    } else if (damage.length) {
+      const act = (match.system?.activities || []).find(a => a.damage?.parts?.length);
+      const typeKey = act?.damage?.parts?.[0]?.types?.[0] || act?.damage?.parts?.[0]?.damageType;
+      if (typeKey) damageType = CONFIG.DND5E?.damageTypes?.[typeKey]?.label || typeKey;
+    }
+
+    let desc = match.system?.description?.value || '';
+    if (desc) {
+      desc = desc
+        .replace(/<\/?p>/g, '\n')
+        .replace(/<br\s*\/?>/g, '\n')
+        .replace(/<\/?strong>/g, '**')
+        .replace(/<\/?em>/g, '*')
+        .replace(/<[^>]*>/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      const lines = desc.split('\n').filter(Boolean);
+      if (lines.some(l => /^Componenti?:/i.test(l) || /^Components?:/i.test(l))) {
+        const start = lines.findIndex(l => /^Durata/i.test(l) || /^Duration/i.test(l));
+        if (start >= 0) {
+          desc = lines.slice(start + 1).join('\n\n').trim();
+        }
+      }
+      desc = desc.slice(0, 500);
+    }
+
+    const prepared = match.system?.prepared ?? true;
+
+    const spellSlots = actor.system?.spells || {};
+    const slotKey = `spell${level}`;
+    const slots = spellSlots[slotKey];
+
+    return {
+      id: match.id,
+      name: match.name,
+      level,
+      levelLabel,
+      school,
+      components,
+      activation: activationTime,
+      range: rangeStr,
+      target: targetStr,
+      duration: durationStr,
+      damage: damage.length ? `${damage.join(' + ')} ${damageType !== '—' ? damageType : ''}`.trim() : '—',
+      description: desc,
+      prepared,
+      slots: slots ? `${slots.value || 0}/${slots.max || 0}` : '—',
     };
   }
 
