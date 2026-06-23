@@ -9,6 +9,7 @@ export class BotClient {
     this.connected = false;
     this.gameId = null;
     this.pendingMessages = [];
+    this._hooksRegistered = false;
   }
 
   async connect() {
@@ -25,6 +26,8 @@ export class BotClient {
   }
 
   _registerHooks() {
+    if (this._hooksRegistered) return;
+    this._hooksRegistered = true;
     const _hpPreUpdate = new WeakMap();
 
     Hooks.on('preUpdateActor', (actor, changes) => {
@@ -275,6 +278,16 @@ export class BotClient {
         return RollHandler.handleRollPuro(actor, params);
       case 'roll_initiative':
         return this._rollInitiative(params.discordId);
+      case 'short_rest':
+        return RollHandler.handleShortRest(actor, params);
+      case 'long_rest':
+        return RollHandler.handleLongRest(actor);
+      case 'death_save':
+        return RollHandler.handleDeathSave(actor);
+      case 'roll_concentration':
+        return RollHandler.handleRollConcentration(actor, params);
+      case 'get_inventory':
+        return this._buildInventory(actor);
       default:
         throw new Error(`Azione sconosciuta: ${action}`);
     }
@@ -359,6 +372,37 @@ export class BotClient {
     let f = `${num}d${denom}`;
     if (d.bonus) f += ` + ${d.bonus}`;
     return f;
+  }
+
+  _buildInventory(actor) {
+    const items = actor.items.filter(i =>
+      ['weapon', 'equipment', 'consumable', 'tool', 'loot', 'container', 'backpack'].includes(i.type)
+    );
+
+    return {
+      items: items.map(item => ({
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        quantity: item.system?.quantity || 1,
+        weight: item.system?.weight || 0,
+        equipped: item.system?.equipped || false,
+        price: item.system?.price?.value || 0,
+        priceDenom: item.system?.price?.denomination || 'gp',
+        description: item.system?.description?.value
+          ? item.system.description.value.replace(/<[^>]*>/g, '').slice(0, 100)
+          : '',
+      })),
+      currency: {
+        pp: actor.system?.currency?.pp || 0,
+        gp: actor.system?.currency?.gp || 0,
+        ep: actor.system?.currency?.ep || 0,
+        sp: actor.system?.currency?.sp || 0,
+        cp: actor.system?.currency?.cp || 0,
+      },
+      equippedCount: items.filter(i => i.system?.equipped).length,
+      totalItems: items.length,
+    };
   }
 
   _buildCharacter(actor) {

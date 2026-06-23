@@ -209,6 +209,163 @@ export class RollHandler {
     return this._formatRoll(roll, { type: 'puro', name: formula });
   }
 
+  static async handleShortRest(actor, options = {}) {
+    const classes = actor.items.filter(i => i.type === 'class');
+    if (!classes.length) throw new Error('Nessuna classe trovata');
+
+    const hdTotal = actor.system?.attributes?.hd || 0;
+    const hdUsed = actor.system?.attributes?.hdUsed || 0;
+    const available = hdTotal - hdUsed;
+    if (available <= 0) throw new Error('Nessun dado vita disponibile. Fai un riposo lungo per recuperarli.');
+
+    const conMod = actor.system?.abilities?.con?.mod || 0;
+    const toUse = Math.min(options.hd || available, available);
+
+    const sizes = classes.map(c => parseInt((c.system?.hitDice || 'd6').replace('d', '')));
+    const dieSize = Math.max(...sizes);
+
+    let totalHeal = 0;
+    const rollResults = [];
+
+    for (let i = 0; i < toUse; i++) {
+      const r = new Roll(`1d${dieSize} + ${conMod}`, actor.getRollData());
+      await r.evaluate({ async: true });
+      totalHeal += r.total;
+      rollResults.push(r.total);
+      await r.toMessage({
+        speaker: ChatMessage.getSpeaker({ actor }),
+        flavor: `Riposo Breve — Dado Vita (d${dieSize})`
+      });
+    }
+
+    const currentHp = actor.system?.attributes?.hp?.value || 0;
+    const maxHp = actor.system?.attributes?.hp?.max || 0;
+    const newHp = Math.min(currentHp + totalHeal, maxHp);
+
+    await actor.update({
+      'system.attributes.hp.value': newHp,
+      'system.attributes.hdUsed': hdUsed + toUse,
+    });
+
+    return {
+      success: true,
+      hdUsed: toUse,
+      hdRemaining: available - toUse,
+      hdTotal,
+      hdDieSize: dieSize,
+      totalHeal,
+      rolls: rollResults,
+      hp: { old: currentHp, new: newHp, max: maxHp },
+    };
+  }
+
+  static async handleLongRest(actor) {
+    const maxHp = actor.system?.attributes?.hp?.max || 0;
+    const currentHp = actor.system?.attributes?.hp?.value || 0;
+    const healed = maxHp - currentHp;
+
+    await actor.update({
+      'system.attributes.hp.value': maxHp,
+      'system.attributes.hdUsed': 0,
+      'system.attributes.death.failure': 0,
+      'system.attributes.death.success': 0,
+    });
+
+    const spells = actor.system?.spells || {};
+    const slotUpdates = {};
+    for (const [key, val] of Object.entries(spells)) {
+      if (key.startsWith('spell') && val?.max !== undefined) {
+        slotUpdates[`system.spells.${key}.value`] = val.max;
+      }
+    }
+    if (Object.keys(slotUpdates).length) {
+      await actor.update(slotUpdates);
+    }
+
+    return {
+      success: true,
+      hpHealed: healed,
+      hp: { old: currentHp, new: maxHp, max: maxHp },
+      hdRecovered: actor.system?.attributes?.hd || 0,
+    };
+  }
+
+  static async handleDeathSave(actor) {
+    const roll = new Roll('1d20');
+    await roll.evaluate({ async: true });
+    const total = roll.total;
+
+    await roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flavor: `Tiro Salvezza Morte`
+    });
+
+    const death = actor.system?.attributes?.death || {};
+    let failures = death.failure || 0;
+    let successes = death.success || 0;
+    let result = '';
+
+    if (total === 20) {
+      result = 'RIPRESO! Torna in piedi con 1 PF.';
+      await actor.update({
+        'system.attributes.hp.value': 1,
+        'system.attributes.death.failure': 0,
+        'system.attributes.death.success': 0,
+      });
+    } else if (total === 1) {
+      failures += 2;
+      result = `CROLLO! Subisci 2 fallimenti (${failures}/3).`;
+      await actor.update({ 'system.attributes.death.failure': failures });
+    } else if (total >= 10) {
+      successes += 1;
+      result = `Successo! (${successes}/3)`;
+      await actor.update({ 'system.attributes.death.success': successes });
+    } else {
+      failures += 1;
+      result = `Fallimento! (${failures}/3)`;
+      await actor.update({ 'system.attributes.death.failure': failures });
+    }
+
+    if (failures >= 3) result = '⚠️ **MUORI!** 3 fallimenti nei tiri salvezza morte.';
+    if (successes >= 3) result = '✅ **Stabilizzato!** 3 successi nei tiri salvezza morte.';
+
+    return {
+      success: true,
+      roll: total,
+      result,
+      failures,
+      successes,
+    };
+  }
+
+  static async handleRollConcentration(actor, options = {}) {
+    const damage = options.damage || 0;
+    const dc = Math.max(10, Math.floor(damage / 2));
+
+    const ability = actor.system?.abilities?.con;
+    const modifier = ability?.save?.value ?? ability?.save ?? ability?.mod ?? 0;
+
+    const roll = new Roll(`1d20 + ${modifier}`, actor.getRollData());
+    await roll.evaluate({ async: true });
+
+    await roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flavor: `Concentrazione (DC ${dc}, danno: ${damage})`
+    });
+
+    const passed = roll.total >= dc;
+
+    return {
+      success: true,
+      roll: roll.total,
+      dc,
+      damage,
+      modifier,
+      passed,
+      result: passed ? 'Concentrazione mantenuta' : 'Concentrazione persa!',
+    };
+  }
+
   static _formatRoll(roll, meta = {}) {
     if (!roll) {
       return { error: 'Roll failed to execute', meta };

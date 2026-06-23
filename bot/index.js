@@ -145,6 +145,28 @@ const commands = [
     .setDescription("Tira iniziativa per il tuo personaggio"),
 
   new SlashCommandBuilder()
+    .setName('riposo-breve')
+    .setDescription('Riposo breve: tira dadi vita e cura PF')
+    .addIntegerOption(o => o.setName('hd').setDescription('Quanti dadi vita usare (default: tutti)').setMinValue(1)),
+
+  new SlashCommandBuilder()
+    .setName('riposo-lungo')
+    .setDescription('Riposo lungo: cura completa, recupera dadi vita e slot'),
+
+  new SlashCommandBuilder()
+    .setName('ts-morte')
+    .setDescription('Tiro salvezza per non morire'),
+
+  new SlashCommandBuilder()
+    .setName('concentrazione')
+    .setDescription('Tiro Costituzione per mantenere la concentrazione')
+    .addIntegerOption(o => o.setName('danno').setDescription('Danno subito').setRequired(true).setMinValue(1)),
+
+  new SlashCommandBuilder()
+    .setName('inventario')
+    .setDescription('Mostra l\'inventario del personaggio'),
+
+  new SlashCommandBuilder()
     .setName('puro')
     .setDescription('Tiro libero con formula personalizzata')
     .addStringOption(o => o.setName('formula').setDescription('Formula del dado (es: 1d20+5, 3d6+2)').setRequired(true))
@@ -1049,6 +1071,167 @@ const handlers = {
     hpCache.delete(interaction.user.id);
 
     await interaction.editReply(`[OK] Passato a **${target.actorName}**`);
+  },
+
+  async 'riposo-breve'(interaction) {
+    await interaction.deferReply();
+    const sess = getSessionForDiscord(interaction.user.id);
+    if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
+
+    const hd = interaction.options.getInteger('hd') || 0;
+    const result = await sendToFoundry(sess.link.gameId, {
+      type: 'execute', action: 'short_rest', params: { hd },
+    }, interaction.user.id, 30000);
+
+    if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
+    if (!result?.success) return interaction.editReply('[ERR] Riposo breve fallito');
+
+    const r = result;
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor(0x4CAF50)
+        .setTitle('Riposo Breve')
+        .setDescription(`**${r.totalHeal}** PF recuperati (${r.hp.old} → ${r.hp.new}/${r.hp.max})`)
+        .addFields(
+          { name: 'Dadi Vita Usati', value: `${r.hdUsed} (d${r.hdDieSize})`, inline: true },
+          { name: 'Dadi Vita Rimasti', value: `${r.hdRemaining}/${r.hdTotal}`, inline: true },
+        )
+        .setTimestamp()],
+    });
+  },
+
+  async 'riposo-lungo'(interaction) {
+    await interaction.deferReply();
+    const sess = getSessionForDiscord(interaction.user.id);
+    if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
+
+    const result = await sendToFoundry(sess.link.gameId, {
+      type: 'execute', action: 'long_rest', params: {},
+    }, interaction.user.id, 30000);
+
+    if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
+    if (!result?.success) return interaction.editReply('[ERR] Riposo lungo fallito');
+
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor(0x2196F3)
+        .setTitle('Riposo Lungo')
+        .setDescription(`PF completamente recuperati (${result.hp.old} → ${result.hp.new}/${result.hp.max})`)
+        .addFields(
+          { name: 'PF Recuperati', value: `${result.hpHealed}`, inline: true },
+          { name: 'Dadi Vita Recuperati', value: `${result.hdRecovered}`, inline: true },
+        )
+        .setTimestamp()],
+    });
+  },
+
+  async 'ts-morte'(interaction) {
+    await interaction.deferReply();
+    const sess = getSessionForDiscord(interaction.user.id);
+    if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
+
+    const result = await sendToFoundry(sess.link.gameId, {
+      type: 'execute', action: 'death_save', params: {},
+    }, interaction.user.id, 30000);
+
+    if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
+    if (!result?.success) return interaction.editReply('[ERR] Tiro salvezza fallito');
+
+    const color = result.roll === 20 ? 0x4CAF50 : result.roll === 1 ? 0xF44336 : result.roll >= 10 ? 0x66BB6A : 0xFF9800;
+
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor(color)
+        .setTitle(`Tiro Salvezza Morte: ${result.roll}`)
+        .setDescription(result.result)
+        .addFields(
+          { name: 'Successi', value: `${result.successes}/3`, inline: true },
+          { name: 'Fallimenti', value: `${result.failures}/3`, inline: true },
+        )
+        .setTimestamp()],
+    });
+  },
+
+  async concentrazione(interaction) {
+    await interaction.deferReply();
+    const sess = getSessionForDiscord(interaction.user.id);
+    if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
+
+    const danno = interaction.options.getInteger('danno');
+    const result = await sendToFoundry(sess.link.gameId, {
+      type: 'execute', action: 'roll_concentration', params: { damage: danno },
+    }, interaction.user.id, 30000);
+
+    if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
+    if (!result?.success) return interaction.editReply('[ERR] Tiro concentrazione fallito');
+
+    const color = result.passed ? 0x4CAF50 : 0xF44336;
+
+    await interaction.editReply({
+      embeds: [new EmbedBuilder()
+        .setColor(color)
+        .setTitle('Concentrazione')
+        .setDescription(`**${result.result}**`)
+        .addFields(
+          { name: 'Danno Subito', value: `${result.damage}`, inline: true },
+          { name: 'CD', value: `${result.dc}`, inline: true },
+          { name: 'Tiro', value: `${result.roll} (mod: ${result.modifier >= 0 ? '+' : ''}${result.modifier})`, inline: true },
+        )
+        .setTimestamp()],
+    });
+  },
+
+  async inventario(interaction) {
+    await interaction.deferReply();
+    const sess = getSessionForDiscord(interaction.user.id);
+    if (!sess) return interaction.editReply('[ERR] Non hai un personaggio collegato.');
+
+    const result = await sendToFoundry(sess.link.gameId, {
+      type: 'request', action: 'get_inventory', params: {},
+    }, interaction.user.id, 30000);
+
+    if (result?.error) return interaction.editReply(`[ERR] ${result.error}`);
+    if (!result?.items) return interaction.editReply('[ERR] Inventario non disponibile.');
+
+    const cur = result.currency;
+    const embed = new EmbedBuilder()
+      .setColor(0x8D6E63)
+      .setTitle('Inventario')
+      .setDescription(`**${result.equippedCount} equipaggiati** / ${result.totalItems} oggetti totali`);
+
+    const gp = cur.pp * 10 + cur.gp + cur.ep * 0.5 + cur.sp * 0.1 + cur.cp * 0.01;
+    embed.addFields({
+      name: `💰 Monete (${gp.toFixed(1)} gp totali)`,
+      value: [
+        cur.pp > 0 ? `PP: ${cur.pp}` : '',
+        `GP: ${cur.gp}`,
+        cur.ep > 0 ? `PE: ${cur.ep}` : '',
+        cur.sp > 0 ? `PS: ${cur.sp}` : '',
+        cur.cp > 0 ? `PR: ${cur.cp}` : '',
+      ].filter(Boolean).join(' | '),
+    });
+
+    const equipped = result.items.filter(i => i.equipped).slice(0, 20);
+    if (equipped.length) {
+      embed.addFields({
+        name: `⚔ Equipaggiato (${equipped.length})`,
+        value: equipped.map(i => `**${i.name}**${i.quantity > 1 ? ` ×${i.quantity}` : ''}`).join('\n') || '—',
+      });
+    }
+
+    const others = result.items.filter(i => !i.equipped).slice(0, 20);
+    if (others.length) {
+      embed.addFields({
+        name: `🎒 Zaino (${others.length})`,
+        value: others.map(i => `**${i.name}**${i.quantity > 1 ? ` ×${i.quantity}` : ''}${i.weight ? ` (${i.weight} lb)` : ''}`).join('\n') || '—',
+      });
+    }
+
+    if (result.items.length > 40) {
+      embed.setFooter({ text: `… e altri ${result.items.length - 40} oggetti` });
+    }
+
+    await interaction.editReply({ embeds: [embed] });
   },
 
   async iniziativa(interaction) {
