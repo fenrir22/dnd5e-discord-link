@@ -584,9 +584,32 @@ export class BotClient {
       : '—';
 
     const target = match.system?.target || {};
-    const targetStr = target.value
-      ? `${target.value}${target.units ? ` ${target.units}` : ''}${target.type ? ` (${target.type})` : ''}`
-      : '—';
+    const template = target.template || {};
+    const affects = target.affects || {};
+    let targetStr;
+    if (target.value > 0 && target.units) {
+      targetStr = `${target.value} ${target.units}${target.type ? ` (${target.type})` : ''}`;
+    } else if (target.type && !target.value) {
+      targetStr = target.type;
+    } else if (template.type) {
+      targetStr = `${template.size || ''} ${template.type}${template.units ? ` ${template.units}` : ''}`.trim();
+    } else if (affects.type) {
+      targetStr = `${affects.count || ''} ${affects.type}${affects.choice ? ' (scelta)' : ''}${affects.special ? ` (${affects.special})` : ''}`.trim();
+    } else {
+      const act = (match.system?.activities || []).find(a => a.target);
+      if (act?.target) {
+        const at = act.target;
+        const t = at.template || {};
+        const a = at.affects || {};
+        if ((at.value || at.units) && !t.type && !a.type) targetStr = `${at.value || ''} ${at.units || ''}`.trim();
+        else if (at.value) targetStr = `${at.value} ${at.units || ''}${at.type ? ` (${at.type})` : ''}`.trim();
+        else if (t.type) targetStr = `${t.size || ''} ${t.type}${t.units ? ` ${t.units}` : ''}`.trim();
+        else if (a.type) targetStr = `${a.count || ''} ${a.type}${a.choice ? ' (scelta)' : ''}`.trim();
+        else targetStr = at.type || '—';
+      } else {
+        targetStr = '—';
+      }
+    }
 
     const durationParts = match.system?.duration || {};
     const durationStr = durationParts.value
