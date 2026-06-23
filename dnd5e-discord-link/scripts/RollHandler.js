@@ -112,11 +112,15 @@ export class RollHandler {
         const saveLabel = CONFIG.DND5E?.abilities?.[saveAbilityKey]?.label || saveAbilityKey.toUpperCase() || '—';
         await ChatMessage.create({
           speaker: ChatMessage.getSpeaker({ actor }),
-          flavor: `${item.name} — Tiro Salvezza`,
-          content: `<p><strong>CD ${saveDC}</strong> — ${saveLabel}</p>`,
+          flavor: `${item.name} — Tiro Salvezza CD ${saveDC} ${saveLabel}`,
+          content: `<p><strong>CD ${saveDC}</strong> — ${saveLabel}<br>Il bersaglio deve superare il tiro salvezza per subire metà danno.</p>`,
         });
         let damageResult;
-        try { damageResult = await this.handleRollDamage(actor, itemId, false); } catch {}
+        try {
+          const dmgResult = await saveAct.rollDamage({}, { configure: false }, { create: true });
+          const dmgRoll = Array.isArray(dmgResult) ? dmgResult[0] : dmgResult;
+          if (dmgRoll) damageResult = this._formatRoll(dmgRoll, { type: 'damage', name: item.name });
+        } catch {}
         return {
           type: 'save',
           name: item.name,
